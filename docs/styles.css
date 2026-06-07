@@ -1,0 +1,210 @@
+/* 🐍 グラムちゃん・サイバーパンク・スネークゲーム 🦋 */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: linear-gradient(135deg, #1a0033 0%, #0d0021 50%, #1a0033 100%);
+  color: #e0d4ff;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ✨ 星空背景エフェクト */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, #d4a5ff, transparent),
+    radial-gradient(2px 2px at 40px 70px, #a88cff, transparent),
+    radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+    radial-gradient(2px 2px at 130px 80px, #d4a5ff, transparent),
+    radial-gradient(1px 1px at 160px 120px, #fff, transparent);
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 🎮 タイトル */
+h1 {
+  font-size: 2.5em;
+  text-align: center;
+  margin-bottom: 10px;
+  background: linear-gradient(90deg, #d4a5ff, #a88cff, #d4a5ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(168, 140, 255, 0.5);
+  z-index: 1;
+  position: relative;
+}
+
+.subtitle {
+  font-size: 1em;
+  color: #a88cff;
+  margin-bottom: 20px;
+  z-index: 1;
+  position: relative;
+}
+
+/* 🎯 ゲームコンテナ */
+.game-container {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 🎨 Canvasスタイル */
+canvas {
+  border: 3px solid #a88cff;
+  border-radius: 10px;
+  box-shadow: 
+    0 0 20px rgba(168, 140, 255, 0.4),
+    0 0 40px rgba(168, 140, 255, 0.2),
+    inset 0 0 20px rgba(168, 140, 255, 0.1);
+  background: linear-gradient(135deg, #0d001a 0%, #1a0033 100%);
+}
+
+/* 📊 UI情報パネル */
+.ui-panel {
+  display: flex;
+  justify-content: space-between;
+  width: 440px;
+  margin-top: 15px;
+  padding: 10px 15px;
+  background: rgba(168, 140, 255, 0.1);
+  border: 1px solid rgba(168, 140, 255, 0.3);
+  border-radius: 8px;
+  z-index: 1;
+}
+
+.ui-item {
+  text-align: center;
+}
+
+.ui-label {
+  font-size: 0.75em;
+  color: #a88cff;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ui-value {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #d4a5ff;
+}
+
+/* 💜 パワーアップアイコン */
+.powerup-icons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  z-index: 1;
+}
+
+.powerup-icon {
+  width: 40px;
+  height: 40px;
+  border: 2px solid rgba(168, 140, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2em;
+  opacity: 0.3;
+  transition: all 0.3s;
+}
+
+.powerup-icon.active {
+  opacity: 1;
+  border-color: #d4a5ff;
+  box-shadow: 0 0 15px rgba(212, 165, 255, 0.5);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* 📱 スマホ用タッチコントロール */
+.touch-controls {
+  display: none;
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin-top: 20px;
+  z-index: 1;
+}
+
+.touch-btn {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background: rgba(168, 140, 255, 0.2);
+  border: 2px solid rgba(168, 140, 255, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5em;
+  color: #d4a5ff;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.touch-btn:active {
+  background: rgba(168, 140, 255, 0.5);
+  box-shadow: 0 0 20px rgba(168, 140, 255, 0.5);
+}
+
+.touch-up { top: 0; left: 70px; }
+.touch-down { bottom: 0; left: 70px; }
+.touch-left { top: 70px; left: 0; }
+.touch-right { top: 70px; right: 0; }
+
+/* 🎵 フッター */
+.footer {
+  margin-top: 20px;
+  font-size: 0.8em;
+  color: rgba(168, 140, 255, 0.6);
+  z-index: 1;
+}
+
+/* 📱 レスポンシブ */
+@media (max-width: 600px) {
+  h1 { font-size: 1.8em; }
+  canvas { width: 90vw; height: auto; }
+  .ui-panel { width: 90vw; }
+  .touch-controls { display: block; }
+}
+
+/* ✨ ネオングリッド背景（Canvasの上に重ねる用） */
+.neon-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}

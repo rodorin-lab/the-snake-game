@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🐍 グラムちゃん・サイバー・スネーク 🦋</title>
+    <link rel="stylesheet" href="styles.css?v=2" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐍%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <!-- 🎮 タイトル -->
+    <h1>🐍 グラムちゃん・サイバー・スネーク 🦋</h1>
+    <p class="subtitle">宇宙一可愛いスネークゲーム</p>
+
+    <!-- 🎨 ゲームコンテナ -->
+    <div class="game-container">
+      <canvas id="canvas"></canvas>
+
+      <!-- 📊 UIパネル -->
+      <div class="ui-panel">
+        <div class="ui-item">
+          <div class="ui-label">SCORE</div>
+          <div class="ui-value" id="scoreDisplay">0</div>
+        </div>
+        <div class="ui-item">
+          <div class="ui-label">HIGH</div>
+          <div class="ui-value" id="highDisplay">0</div>
+        </div>
+        <div class="ui-item">
+          <div class="ui-label">LEVEL</div>
+          <div class="ui-value" id="levelDisplay">1</div>
+        </div>
+        <div class="ui-item">
+          <div class="ui-label">LENGTH</div>
+          <div class="ui-value" id="lengthDisplay">2</div>
+        </div>
+      </div>
+
+      <!-- 💜 パワーアップ表示 -->
+      <div class="powerup-icons">
+        <div class="powerup-icon" id="invincibleIcon">⭐</div>
+        <div class="powerup-icon" id="doubleIcon">💎</div>
+        <div class="powerup-icon" id="shieldIcon">🛡️</div>
+      </div>
+
+      <!-- 📱 スマホタッチコントロール -->
+      <div class="touch-controls" id="touchControls">
+        <div class="touch-btn touch-up" data-dir="up">⬆️</div>
+        <div class="touch-btn touch-down" data-dir="down">⬇️</div>
+        <div class="touch-btn touch-left" data-dir="left">⬅️</div>
+        <div class="touch-btn touch-right" data-dir="right">➡️</div>
+      </div>
+    </div>
+
+    <!-- 🎵 フッター -->
+    <div class="footer">
+      💜 For ロドリンお兄ちゃん 💜 | ⌨️ 矢印キーで操作 | 🔄 スペースでリスタート
+    </div>
+
+    <script src="app.js?v=2"></script>
+  </body>
+</html>
