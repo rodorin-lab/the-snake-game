@@ -57,7 +57,8 @@ let mouseX = W/2, mouseY = H/2;
 let gameActive = true;
 
 // ── ヘビ ──
-const SNAKE_SPEED = 3.5;
+const SNAKE_SPEED = 5.5;
+const SNAKE_TURN = 0.12;
 const SEGMENT_COUNT = 40;
 const SEGMENT_SPACING = 5;
 let snakeHead = { x: W/2, y: H/2, vx: 0, vy: 0 };
@@ -162,11 +163,14 @@ function initAudio() {
 function updateBGM(dt) {
   if (!bgmPlaying || !audioCtx) return;
   bgmTimer += dt * 1000;
-  while (bgmTimer >= STEP_TIME * 1000) {
+  let safety = 0;
+  while (bgmTimer >= STEP_TIME * 1000 && safety < 10) {
     bgmTimer -= STEP_TIME * 1000;
     playStep(bgmStep);
-    bgmStep = (bgmStep + 1) % 64; // 4小節ループ
+    bgmStep = (bgmStep + 1) % 64;
+    safety++;
   }
+  if (safety >= 10) bgmTimer = 0; // リセットでフリーズ防止
 }
 
 function playStep(step) {
@@ -445,13 +449,14 @@ function drawNeonGrid() {
 function drawSnake() {
   if (snakeSegments.length < 2) return;
 
-  // グロー効果
-  ctx.shadowColor = '#ff00ff';
-  ctx.shadowBlur = 15;
+  const time = Date.now() * 0.001;
+  const hueShift = Math.sin(time * 2) * 20; // 色が揺れる
 
-  // 太いラインでベース
-  ctx.strokeStyle = 'rgba(255,0,255,0.6)';
-  ctx.lineWidth = 10;
+  // 🔥 外側グロー（巨大）
+  ctx.shadowColor = '#ff00ff';
+  ctx.shadowBlur = 25;
+  ctx.strokeStyle = 'rgba(255,0,255,0.3)';
+  ctx.lineWidth = 18;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.beginPath();
@@ -461,13 +466,19 @@ function drawSnake() {
   }
   ctx.stroke();
 
-  // 細いコアライン
-  ctx.shadowBlur = 8;
-  ctx.shadowColor = '#ffffff';
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-  ctx.lineWidth = 4;
+  // 💜 メインボディ
+  ctx.shadowColor = `hsl(${300 + hueShift}, 100%, 60%)`;
+  ctx.shadowBlur = 15;
+  ctx.strokeStyle = `hsla(${300 + hueShift}, 100%, 70%, 0.7)`;
+  ctx.lineWidth = 10;
   ctx.stroke();
 
+  // ⚪ コア（白く光る）
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = '#ffffff';
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 4;
+  ctx.stroke();
   ctx.shadowBlur = 0;
 
   // 頭
@@ -561,46 +572,58 @@ function drawScanlines() {
 
 // ── メインループ ──
 function update() {
-  // ヘビ頭をマウスに追従
+  // 🎯 ヘビ頭: マウス方向に滑らか旋回
   const dx = mouseX - snakeHead.x;
   const dy = mouseY - snakeHead.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist > 2) {
-    const nx = dx / dist;
-    const ny = dy / dist;
-    snakeHead.vx += nx * 0.3;
-    snakeHead.vy += ny * 0.3;
-  }
-
-  // 速度制限
-  const hspeed = Math.sqrt(snakeHead.vx * snakeHead.vx + snakeHead.vy * snakeHead.vy);
-  if (hspeed > SNAKE_SPEED) {
-    snakeHead.vx = snakeHead.vx / hspeed * SNAKE_SPEED;
-    snakeHead.vy = snakeHead.vy / hspeed * SNAKE_SPEED;
+  if (dist > 3) {
+    const targetAngle = Math.atan2(dy, dx);
+    let currentAngle = Math.atan2(snakeHead.vy || 0.001, snakeHead.vx || 0.001);
+    // 最短回転
+    let diff = targetAngle - currentAngle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    currentAngle += diff * SNAKE_TURN;
+    snakeHead.vx = Math.cos(currentAngle) * SNAKE_SPEED;
+    snakeHead.vy = Math.sin(currentAngle) * SNAKE_SPEED;
+  } else {
+    // 停止
+    snakeHead.vx *= 0.85;
+    snakeHead.vy *= 0.85;
   }
 
   snakeHead.x += snakeHead.vx;
   snakeHead.y += snakeHead.vy;
 
-  // 壁でバウンド
-  if (snakeHead.x < 10) { snakeHead.x = 10; snakeHead.vx *= -0.5; }
-  if (snakeHead.x > W - 10) { snakeHead.x = W - 10; snakeHead.vx *= -0.5; }
-  if (snakeHead.y < 10) { snakeHead.y = 10; snakeHead.vy *= -0.5; }
-  if (snakeHead.y > H - 10) { snakeHead.y = H - 10; snakeHead.vy *= -0.5; }
+  // 壁でなめらか反射
+  if (snakeHead.x < 8) { snakeHead.x = 8; snakeHead.vx = Math.abs(snakeHead.vx) * 0.6; }
+  if (snakeHead.x > W - 8) { snakeHead.x = W - 8; snakeHead.vx = -Math.abs(snakeHead.vx) * 0.6; }
+  if (snakeHead.y < 8) { snakeHead.y = 8; snakeHead.vy = Math.abs(snakeHead.vy) * 0.6; }
+  if (snakeHead.y > H - 8) { snakeHead.y = H - 8; snakeHead.vy = -Math.abs(snakeHead.vy) * 0.6; }
 
-  // 動いてるときパーティクル
-  if (hspeed > 1) {
-    spawnParticles(snakeHead.x, snakeHead.y, '#ff00ff', 0.3);
+  // 移動中パーティクル (多め)
+  const hspeed = Math.sqrt(snakeHead.vx * snakeHead.vx + snakeHead.vy * snakeHead.vy);
+  if (hspeed > 2) {
+    spawnParticles(snakeHead.x, snakeHead.y, '#ff00ff', 0.6);
+    spawnParticles(snakeHead.x, snakeHead.y, '#ff66ff', 0.3);
   }
 
-  // セグメント更新（前のセグメントに追従）
-  snakeSegments[0].x += (snakeHead.x - snakeSegments[0].x) * 0.5;
-  snakeSegments[0].y += (snakeHead.y - snakeSegments[0].y) * 0.5;
+  // ✨ 常時浮遊パーティクル
+  if (Math.random() < 0.4) {
+    spawnParticles(
+      Math.random() * W, Math.random() * H,
+      Math.random() < 0.5 ? '#00ffff' : '#ff00ff', 0.5
+    );
+  }
+
+  // セグメント追従（高速・なめらか）
+  snakeSegments[0].x += (snakeHead.x - snakeSegments[0].x) * 0.6;
+  snakeSegments[0].y += (snakeHead.y - snakeSegments[0].y) * 0.6;
   for (let i = 1; i < snakeSegments.length; i++) {
     const prev = snakeSegments[i - 1];
     const seg = snakeSegments[i];
-    seg.x += (prev.x - seg.x) * 0.35;
-    seg.y += (prev.y - seg.y) * 0.35;
+    seg.x += (prev.x - seg.x) * 0.45;
+    seg.y += (prev.y - seg.y) * 0.45;
   }
 
   // コンボタイマー
@@ -645,10 +668,9 @@ function draw() {
   // 背景
   ctx.fillStyle = '#0a0014';
   ctx.fillRect(0, 0, W, H);
-  drawNeonGrid();
   drawMatrixRain();
 
-  // グリッチバー
+  // ⚡ グリッチバー + クロマティック収差
   if (glitchAmount > 0.05 && Math.random() < 0.3) {
     const gy2 = Math.random() * H;
     const gh2 = Math.random() * 20 + 5;
