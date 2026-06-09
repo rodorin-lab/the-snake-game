@@ -127,65 +127,140 @@ for (let i = 0; i < RAIN_COUNT; i++) {
 let glitchTimer = 0;
 let glitchAmount = 0;
 
-// ── オーディオ ──
+// ═══════════════════════════════════════════════
+// 🎵 レトロサイバーパンク BGM — Chiptune Engine
+// ═══════════════════════════════════════════════
 let audioCtx = null;
 let bgmPlaying = false;
+let bgmStep = 0;
+let bgmTimer = 0;
+const BPM = 138;
+const STEP_TIME = 60 / BPM / 4; // 16th note
+
+// 🎹 ダークサイバーパンクコード進行 (Am - F - G - Em)
+const bassNotes = [110, 87.31, 98, 82.41]; // A2, F2, G2, E2
+const arpNotes = [
+  [220, 261.63, 329.63, 440],                   // Am
+  [174.61, 220, 261.63, 349.23],                 // F
+  [196, 246.94, 293.66, 392],                     // G
+  [164.81, 196, 246.94, 329.63]                   // Em
+];
+
+// 🥁 ドラムパターン (16ステップ)
+const kickPattern  = [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0]; // 4つ打ち
+const hatPattern   = [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,1,1,0]; // 8分+α
+const bassPattern  = [1,0,0,0, 1,0,1,0, 1,0,0,1, 0,0,1,0]; // ベースリズム
+const arpPattern   = [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1]; // 常時アルペジオ
 
 function initAudio() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  // ダークシンセBGM
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  const filter = audioCtx.createBiquadFilter();
-  osc.type = 'sawtooth';
-  osc.frequency.value = 55;
-  filter.type = 'lowpass';
-  filter.frequency.value = 200;
-  filter.Q.value = 5;
-  gain.gain.value = 0.03;
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  // LFO for wobble
-  const lfo = audioCtx.createOscillator();
-  const lfoGain = audioCtx.createGain();
-  lfo.frequency.value = 0.3;
-  lfoGain.gain.value = 20;
-  lfo.connect(lfoGain);
-  lfoGain.connect(filter.frequency);
-  lfo.start();
   bgmPlaying = true;
 }
 
+// 🎛️ BGMシンセエンジン（毎フレーム呼び出し）
+function updateBGM(dt) {
+  if (!bgmPlaying || !audioCtx) return;
+  bgmTimer += dt * 1000;
+  while (bgmTimer >= STEP_TIME * 1000) {
+    bgmTimer -= STEP_TIME * 1000;
+    playStep(bgmStep);
+    bgmStep = (bgmStep + 1) % 64; // 4小節ループ
+  }
+}
+
+function playStep(step) {
+  const t = audioCtx.currentTime;
+  const bar = Math.floor(step / 16) % 4;
+  const pos = step % 16;
+  const masterVol = 0.06;
+
+  // 🥁 キック
+  if (kickPattern[pos]) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, t);
+    osc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + 0.12);
+  }
+
+  // 🥁 ハイハット
+  if (hatPattern[pos]) {
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.04, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const src = audioCtx.createBufferSource();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'highpass'; filter.frequency.value = 8000;
+    gain.gain.setValueAtTime(0.08, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    src.buffer = buf;
+    src.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+    src.start(t); src.stop(t + 0.04);
+  }
+
+  // 🎸 ベース (矩形波)
+  if (bassPattern[pos]) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    osc.type = 'square';
+    osc.frequency.value = bassNotes[bar];
+    filter.type = 'lowpass'; filter.frequency.value = 400; filter.Q.value = 3;
+    gain.gain.setValueAtTime(masterVol * 1.5, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + STEP_TIME * 1.5);
+    osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + STEP_TIME * 2);
+  }
+
+  // 🎹 アルペジオ (三角波、高音)
+  if (arpPattern[pos]) {
+    const arpIdx = pos % 4;
+    const freq = arpNotes[bar][arpIdx] * 2; // オクターブ上
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(masterVol * 0.5, t);
+    gain.gain.setValueAtTime(masterVol * 0.5, t + STEP_TIME * 0.6);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + STEP_TIME * 0.9);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + STEP_TIME);
+  }
+}
+
+// 🎵 効果音
 function playEatSound() {
   if (!audioCtx) return;
+  const t = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.type = 'square';
-  osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.1);
-  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start(audioCtx.currentTime);
-  osc.stop(audioCtx.currentTime + 0.15);
+  osc.frequency.setValueAtTime(600, t);
+  osc.frequency.exponentialRampToValueAtTime(1200, t + 0.04);
+  osc.frequency.exponentialRampToValueAtTime(300, t + 0.12);
+  gain.gain.setValueAtTime(0.1, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.18);
 }
 
 function playComboSound(pitch) {
   if (!audioCtx) return;
+  const t = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.type = 'triangle';
   osc.frequency.value = pitch;
-  gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start(audioCtx.currentTime);
-  osc.stop(audioCtx.currentTime + 0.2);
+  gain.gain.setValueAtTime(0.08, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.2);
 }
 
 // ── イベント ──
@@ -599,7 +674,11 @@ function draw() {
   ctx.fillRect(0, 0, W, H);
 }
 
-function loop() {
+let lastTime = 0;
+function loop(timestamp) {
+  const dt = lastTime ? (timestamp - lastTime) / 1000 : 0.016;
+  lastTime = timestamp;
+  updateBGM(dt);
   update();
   draw();
   requestAnimationFrame(loop);
